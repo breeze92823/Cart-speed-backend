@@ -12,7 +12,9 @@ const isId = (v: unknown): v is string => typeof v === "string" && ID_PATTERN.te
 // `pose` { x, y, z, yaw, speed, vy, grounded, flying, pitch, roll, training }: the feet position
 // (m), heading (rad), ground speed (m/s), vertical speed and grounded flag (they drive the run /
 // jump / land animation on the receiving side), `flying` + the flight body tilt (`pitch` is the
-// forward somersault angle, `roll` the bank, rad) and `training` (pulling the slingshot).
+// forward somersault angle, `roll` the bank, rad), `training` (pulling the slingshot) and the cart
+// launch: `ride` (0 none, 1 at the gate, 2 in the cart, 3 out of it), `body` (pose kind 0..4),
+// `arms` / `pull` (0..1) and the gate position `gx` / `gz`.
 export function applyPose(p: PlayerState, msg: unknown): void {
   if (!msg || typeof msg !== "object") return;
   const m = msg as Record<string, unknown>;
@@ -28,6 +30,12 @@ export function applyPose(p: PlayerState, msg: unknown): void {
   if (typeof m.training === "boolean") p.training = m.training;
   if (finite(m.pitch)) p.pitch = clamp(m.pitch, -100, 100);
   if (finite(m.roll)) p.roll = clamp(m.roll, -4, 4);
+  if (finite(m.ride)) p.ride = clamp(Math.round(m.ride), 0, 3);
+  if (finite(m.body)) p.body = clamp(Math.round(m.body), 0, 4);
+  if (finite(m.arms)) p.arms = clamp(m.arms, 0, 1);
+  if (finite(m.pull)) p.pull = clamp(m.pull, 0, 1);
+  if (finite(m.gx)) p.gx = clamp(m.gx, -b.xy, b.xy);
+  if (finite(m.gz)) p.gz = clamp(m.gz, -b.z, b.z);
 }
 
 // `loadout` { sling, trail, title, pets: [{ id, tier }] }: equipped catalog ids ("" = none) and the

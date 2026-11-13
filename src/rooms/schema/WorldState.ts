@@ -22,6 +22,13 @@ export const PlayerState = schema(
     pitch: t.float32().default(0), // flight somersault / dive angle, rad
     roll: t.float32().default(0), // flight bank, rad
     training: t.boolean().default(false), // pulling the slingshot
+    // The cart launch (client flight.js pose()), so the others draw the gate, the cart and the body poses:
+    ride: t.uint8().default(0), // 0 none, 1 at the gate, 2 riding the cart, 3 thrown out of it
+    body: t.uint8().default(0), // body pose: 0 none, 1 sit, 2 fling, 3 tumble, 4 lie (client ridePose.js BODY_KINDS)
+    arms: t.float32().default(0), // arms up over the head while riding, 0..1
+    pull: t.float32().default(0), // the cart drawn back against the bungee, 0..1
+    gx: t.float32().default(0), // where the launch gate stands, metres
+    gz: t.float32().default(0),
     sling: t.string().default(""), // equipped slingshot id (client config.js SLINGSHOTS)
     trail: t.string().default(""), // equipped flight trail id, "" = none
     title: t.string().default(""), // equipped title id
