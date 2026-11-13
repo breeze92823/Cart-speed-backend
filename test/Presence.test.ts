@@ -58,4 +58,19 @@ describe("presence", () => {
     assert.strictEqual(seen.trail, "red");
     assert.strictEqual(seen.x, POSE_BOUNDS.xy);
   });
+
+  it("relays the cart launch (ride, body pose, arms, pull, gate), bounded", async () => {
+    const room = await colyseus.createRoom<WorldState>("world", {});
+    const a = await colyseus.connectTo(room, { userId: "guest-a" });
+    const b = await colyseus.connectTo(room, { userId: "guest-b" });
+    await sleep(50);
+    a.send("pose", { flying: true, ride: 2, body: 1, arms: 0.5, pull: 0.25, gx: 4, gz: -30 });
+    await sleep(100);
+    const seen = (b.state as any).players.get(a.sessionId);
+    assert.deepStrictEqual([seen.ride, seen.body, seen.arms, seen.pull, seen.gx, seen.gz], [2, 1, 0.5, 0.25, 4, -30]);
+    a.send("pose", { ride: 9, body: -1, arms: 5, pull: -2, gx: 1e9 });
+    await sleep(100);
+    const p = room.state.players.get(a.sessionId)!;
+    assert.deepStrictEqual([p.ride, p.body, p.arms, p.pull, p.gx], [3, 0, 1, 0, POSE_BOUNDS.xy]);
+  });
 });
