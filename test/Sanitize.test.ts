@@ -62,4 +62,24 @@ describe("sanitizeProgress", () => {
     const out = sanitizeProgress({ gear: { dash: 2.7, shield: 999, suit: -3, "bad id": 1, wings: "x" } })!;
     assert.deepStrictEqual(out.gear, { dash: 2, shield: 20, suit: 0 });
   });
+  it("keeps auras, dice, quests, milestones and locked pets", () => {
+    const out = sanitizeProgress({
+      auras: ["dust", "spark", "bad id"],
+      aura: "spark",
+      dice: { gold: 3, cosmic: -1 },
+      milestones: ["msdragon"],
+      quests: [{ id: "fly1000", base: 4, best: 250 }, { id: "fly1000", base: 1 }, { id: "hatch5", base: "x" }, "nope"],
+      questNext: 7.9,
+      pets: [{ uid: 1, id: "pup", tier: "", equipped: false, locked: true }, { uid: 2, id: "pup", tier: "", equipped: false, locked: "yes" }],
+    })!;
+    assert.deepStrictEqual(out.auras, ["dust", "spark"]);
+    assert.strictEqual(out.aura, "spark");
+    assert.deepStrictEqual(out.dice, { gold: 3, cosmic: 0 });
+    assert.deepStrictEqual(out.milestones, ["msdragon"]);
+    assert.deepStrictEqual(out.quests, [{ id: "fly1000", base: 4, best: 250 }, { id: "hatch5", base: 0, best: 0 }]);
+    assert.strictEqual(out.questNext, 7);
+    assert.strictEqual(out.pets![0].locked, true);
+    assert.strictEqual(out.pets![1].locked, undefined);
+    assert.strictEqual(sanitizeProgress({ auras: ["dust"], aura: "bigbang" })!.aura, undefined, "an unowned aura is not equipped");
+  });
 });

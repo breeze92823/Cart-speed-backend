@@ -42,6 +42,13 @@ export interface PlayerDoc {
   boostLeft?: Record<string, number>;
   daily?: { unlocked: number; last: number; claimed: number[] };
   title?: string;
+  auras?: string[]; // owned aura ids (client AURAS)
+  aura?: string; // equipped aura ("" = none)
+  dice?: Record<string, number>; // aura dice owned (gold / diamond / cosmic)
+  milestones?: string[]; // rebirth milestone pets already given
+  quests?: { id: string; base: number; best: number }[]; // the active quests
+  questNext?: number; // where the quest pool rotation continues
+  questsDone?: number;
   stats?: Record<string, number>;
   gear?: Record<string, number>; // Flight Gear levels by id
   settings?: Record<string, boolean | number | string>;
@@ -60,6 +67,7 @@ export interface SavedPet {
   id: string;
   tier: string;
   equipped: boolean;
+  locked?: boolean; // protected from Delete / Fuse
 }
 
 let client: MongoClient | null = null;
