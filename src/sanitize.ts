@@ -1,6 +1,6 @@
 import {
   CURRENCY_MAX, REBIRTHS_MAX, COUNT_MAX, DISTANCE_MAX, PLAY_SECONDS_MAX, OWNED_MAX, PETS_MAX, PET_TIERS,
-  PET_SLOTS_MAX, DISCOVERED_MAX, HATCH_MAX, GEAR_LEVEL_MAX, MAP_KEYS_MAX, DAILY_DAYS, SETTING_STRING_MAX, ID_PATTERN,
+  PET_SLOTS_MAX, DISCOVERED_MAX, QUESTS_MAX, HATCH_MAX, GEAR_LEVEL_MAX, MAP_KEYS_MAX, DAILY_DAYS, SETTING_STRING_MAX, ID_PATTERN,
 } from "./constants.js";
 import type { PlayerDoc, SavedPet } from "./db.js";
 
@@ -48,7 +48,9 @@ export function sanitizePets(raw: unknown, slots = PET_SLOTS_MAX): SavedPet[] {
     if (!(PET_TIERS as readonly string[]).includes(tier)) continue;
     const on = p.equipped === true && equipped < slots;
     if (on) equipped++;
-    out.push({ uid: clampInt(p.uid, COUNT_MAX), id: p.id, tier, equipped: on });
+    const pet: SavedPet = { uid: clampInt(p.uid, COUNT_MAX), id: p.id, tier, equipped: on };
+    if (p.locked === true) pet.locked = true; // protected from Delete / Fuse
+    out.push(pet);
   }
   return out;
 }
@@ -97,6 +99,19 @@ function sanitizeDaily(raw: unknown): PlayerDoc["daily"] | undefined {
   };
 }
 
+// Quests (client state.quests): the active quests { id, base, best } -- the stat value when the quest was
+// given and the best single flight since (for "fly N m in one launch").
+export function sanitizeQuests(raw: unknown): { id: string; base: number; best: number }[] {
+  if (!Array.isArray(raw)) return [];
+  const out: { id: string; base: number; best: number }[] = [];
+  for (const q of raw) {
+    if (out.length >= QUESTS_MAX) break;
+    if (!isObject(q) || !isId(q.id) || out.some((x) => x.id === q.id)) continue;
+    out.push({ id: q.id, base: finite(q.base) ? clampNum(q.base, CURRENCY_MAX) : 0, best: finite(q.best) ? clampNum(q.best, DISTANCE_MAX) : 0 });
+  }
+  return out;
+}
+
 // The game is client-authoritative -- no server-side gameplay validation. What IS enforced:
 // shape and bounds, so a malformed payload can never corrupt this player's own Mongo document.
 // A forged number can only ever affect the sender's own save.
@@ -108,7 +123,7 @@ export function sanitizeProgress(raw: unknown): Partial<PlayerDoc> | null {
     if (finite(raw[k])) out[k] = clampNum(raw[k], CURRENCY_MAX);
   }
   for (const k of ["rebirths"] as const) if (finite(raw[k])) out[k] = clampInt(raw[k], REBIRTHS_MAX);
-  for (const k of ["level", "indexClaims", "flights", "nextUid", "extraSlots", "storageBuys"] as const) {
+  for (const k of ["level", "indexClaims", "flights", "nextUid", "extraSlots", "storageBuys", "questNext", "questsDone"] as const) {
     if (finite(raw[k])) out[k] = clampInt(raw[k], COUNT_MAX);
   }
   if (finite(raw.bestDistance)) out.bestDistance = clampNum(raw.bestDistance, DISTANCE_MAX);
@@ -127,11 +142,18 @@ export function sanitizeProgress(raw: unknown): Partial<PlayerDoc> | null {
   if (raw.trail === "") out.trail = "";
   else if (isId(raw.trail) && (!out.trails || out.trails.includes(raw.trail))) out.trail = raw.trail;
   if (isId(raw.title)) out.title = raw.title;
+  // Auras (client AURAS): the owned ids and the equipped one ("" = none; it must be owned).
+  if (raw.auras !== undefined) out.auras = sanitizeIds(raw.auras);
+  if (raw.aura === "") out.aura = "";
+  else if (isId(raw.aura) && (!out.auras || out.auras.includes(raw.aura))) out.aura = raw.aura;
+  if (raw.milestones !== undefined) out.milestones = sanitizeIds(raw.milestones); // rebirth milestone pets given
+  if (raw.quests !== undefined) out.quests = sanitizeQuests(raw.quests);
 
   if (raw.pets !== undefined) out.pets = sanitizePets(raw.pets);
   if (raw.discovered !== undefined) out.discovered = sanitizeDiscovered(raw.discovered);
   if (raw.passes !== undefined) out.passes = boolMap(raw.passes);
   if (raw.potions !== undefined) out.potions = numberMap(raw.potions, 1e9);
+  if (raw.dice !== undefined) out.dice = numberMap(raw.dice, 1e9); // aura dice (Gold / Diamond / Cosmic)
   if (raw.boostLeft !== undefined) out.boostLeft = numberMap(raw.boostLeft, PLAY_SECONDS_MAX);
   if (raw.stats !== undefined) out.stats = numberMap(raw.stats, CURRENCY_MAX);
   if (raw.gear !== undefined) {

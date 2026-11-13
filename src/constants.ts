@@ -34,6 +34,8 @@ export const PET_TIERS = ["", "g", "d"] as const;
 export const PET_SLOTS_MAX = 50;
 // Index (`discovered`): pet id + optional ":g" / ":d". Bounded count.
 export const DISCOVERED_MAX = 1000;
+// Quests (client QUESTS): active quests kept at once.
+export const QUESTS_MAX = 6;
 // Eggs: the most eggs one Open Max can hatch (the +16 upgrade).
 export const HATCH_MAX = 16;
 // Flight Gear levels (client config GEAR: at most 5 levels per item today).
